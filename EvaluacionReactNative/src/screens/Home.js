@@ -62,7 +62,7 @@ const Home = ({ navigation }) => {
                     contentContainerStyle={styles.list}
                 />
                 : 
-                <Text style={styles.Subtitle}>No hay usuarios registrados</Text>
+                <Text style={styles.Subtitle}>Cargando usuarios</Text>
             }
 
             {/* Botón para navegar a la pantalla de agregar usuarios */}

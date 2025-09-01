@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, TextInput, Image, Alert } fro
 import { auth, database } from '../config/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
 
 //import { database, storage } from '../config/firebase';
 //import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -11,6 +12,8 @@ import { collection, addDoc } from 'firebase/firestore';
 // Componente Add para agregar un nuevo usuarios
 const Add = ({ navigation }) => {
     // Estado inicial del usuarios
+
+    const nav = useNavigation();
 
     const [formData, setFormData] = useState({
         nombre: '',
@@ -73,7 +76,7 @@ const Add = ({ navigation }) => {
     
           Alert.alert('Éxito', 'Usuario registrado correctamente');
     
-    
+          nav.navigate('Login');
         } catch (error) {
           let message = 'Error al registrar usuario';
     
@@ -155,6 +158,11 @@ const Add = ({ navigation }) => {
 <TouchableOpacity style={styles.button} onPress={handleRegister}>
 <Text style={styles.buttonText}>Crear usuario</Text>
 </TouchableOpacity>
+
+<TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
+<Text style={styles.buttonText}>iniciar sesión</Text>
+</TouchableOpacity>
+
 </View>
     );
 };
