@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Image, Alert } from 'react-native';
-import { database } from '../config/firebase';
+import { auth, database } from '../config/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+
 //import { database, storage } from '../config/firebase';
 //import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
@@ -8,109 +11,149 @@ import { collection, addDoc } from 'firebase/firestore';
 // Componente Add para agregar un nuevo usuarios
 const Add = ({ navigation }) => {
     // Estado inicial del usuarios
-    const [usuarios, setUsuarios] = useState({
+
+    const [formData, setFormData] = useState({
         nombre: '',
         correo: '',
-        edad: 0,
+        edad: '',
         especialidad: '',
-        contrasena: ''
-    });
+        contrasena: '',
+      });
+
+    const [loading, setLoading] = useState(false);
+    
+    const updateField = (field, value) => {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value
+        }));
+      };
  
-    // Función para navegar a la pantalla de inicio
-    const goToHome = () => {
-    navigation.goBack();
-    };
- 
-    // Función para agregar el usuarios a Firestore
-    const agregarUsuario = async () => {
-        try {
-            let imageUrl = "Storage ya no es gratuito";
- 
-          /*  if (usuarios.imagen) {
-                console.log('Subiendo imagen a Firebase Storage...');
-                const imageRef = ref(storage, `images/${Date.now()}-${usuarios.nombre}`);
- 
-                const response = await fetch(usuarios.imagen);
-                const blob = await response.blob();
- 
-                console.log('Antes del uploadBytes');
-                const snapshot = await uploadBytes(imageRef, blob);
-                console.log('Snapshot después del uploadBytes:', snapshot);
- 
-                imageUrl = await getDownloadURL(snapshot.ref);
-                console.log("URL de la imagen:", imageUrl);
-            }
-*/
-            //console.log('Datos del usuarios:', {...usuarios, imagen: imageUrl});
-            //console.log('Datos del usuarios:', {...usuarios});
-            await addDoc(collection(database, 'usuarios'), {...usuarios});
-            console.log('Se guardó la colección');
- 
-            Alert.alert('usuarios agregado', 'El usuarios se agregó correctamente', [
-                { text: 'Ok', onPress: goToHome },
-            ]);
- 
-        } catch (error) {
-            console.error('Error al agregar el usuarios', error);
-            Alert.alert('Error', 'Ocurrió un error al agregar el usuarios. Por favor, intenta nuevamente.');
+      const validateForm = () => {
+        const { nombre, correo, edad, especialidad, contrasena } = formData;
+        
+        if (!nombre || !correo|| !edad|| !especialidad|| !contrasena) {
+          Alert.alert('Error', 'Por favor, completa todos los campos');
+          return false;
         }
-    };
- 
+    
+        if (contrasena.length < 6) {
+          Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+          return false;
+        }
+    
+        if (isNaN(edad) || parseInt(edad) < 1 || parseInt(edad) > 120) {
+          Alert.alert('Error', 'Por favor, ingresa una edad válida');
+          return false;
+        }
+    
+        return true;
+      };
+
+      const handleRegister = async () => {
+        if (!validateForm()) return;
+    
+        setLoading(true);
+        try {
+          // Crear usuario en Firebase Auth
+          const userCredential = await createUserWithEmailAndPassword(
+            auth, 
+            formData.correo, 
+            formData.contrasena
+          );
+    
+          // Guardar datos adicionales en Firestore
+          await setDoc(doc(database, 'usuarios', userCredential.user.uid), {
+            nombre: formData.nombre,
+            correo: formData.correo,
+            edad: parseInt(formData.edad),
+            especialidad: formData.especialidad,
+            createdAt: new Date().toISOString(),
+          });
+    
+          Alert.alert('Éxito', 'Usuario registrado correctamente');
+    
+    
+        } catch (error) {
+          let message = 'Error al registrar usuario';
+    
+          console.log('Error al registrar usuario:', error);
+          
+          switch (error.code) {
+            case 'auth/email-already-in-use':
+              message = 'Este correo electrónico ya está registrado';
+              break;
+            case 'auth/invalid-email':
+              message = 'Correo electrónico inválido';
+              break;
+            case 'auth/weak-password':
+              message = 'La contraseña es muy débil';
+              break;
+          }
+          
+          Alert.alert('Error', message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+
+
     return (
 <View style={styles.container}>
-<Text style={styles.title}>Agregar usuario</Text>
 <View style={styles.inputContainer}>
-<Text style={styles.label}>Nombre:</Text>
-<TextInput
-                    style={styles.input}
-                    onChangeText={text => setUsuarios({ ...usuarios, nombre: text })}
-                    value={usuarios.nombre}
-                />
+  <Text style={styles.label}>Nombre:</Text>
+  <TextInput
+    style={styles.input}
+    value={formData.nombre}
+    onChangeText={(value)=>updateField('nombre', value)}
+  />
 </View>
 
 <View style={styles.inputContainer}>
-<Text style={styles.label}>Correo electronico:</Text>
-<TextInput
-                    style={styles.input}
-                    onChangeText={text => setUsuarios({ ...usuarios, correo: text })}
-                    value={usuarios.correo}
-                />
+  <Text style={styles.label}>Correo electrónico:</Text>
+  <TextInput
+    style={styles.input}
+    value={formData.correo}
+    placeholder='ejemplo@gmail.com'
+    onChangeText={(value)=>updateField('correo', value)}
+    keyboardType="email-address"
+    autoCapitalize="none"
+  />
 </View>
 
 <View style={styles.inputContainer}>
-<Text style={styles.label}>Especialidad:</Text>
-<TextInput
-                    style={styles.input}
-                    onChangeText={text => setUsuarios({ ...usuarios, especialidad: text })}
-                    value={usuarios.especialidad}
-                />
+  <Text style={styles.label}>Especialidad:</Text>
+  <TextInput
+    style={styles.input}
+    value={formData.especialidad}
+    onChangeText={(value)=>updateField('especialidad', value)}
+  />
 </View>
 
 <View style={styles.inputContainer}>
-<Text style={styles.label}>edad:</Text>
-<TextInput
-                    style={styles.input}
-                    onChangeText={text => setUsuarios({ ...usuarios, edad: parseFloat(text) })}
-                    value={usuarios.edad}
-                    keyboardType='numeric'
-                />
+  <Text style={styles.label}>Edad:</Text>
+  <TextInput
+    style={styles.input}
+    value={formData.edad}
+    onChangeText={(value)=>updateField('edad', value)}
+    keyboardType="numeric"
+  />
 </View>
 
 <View style={styles.inputContainer}>
-<Text style={styles.label}>Contraseña:</Text>
-<TextInput
-                    style={styles.input}
-                    onChangeText={text => setUsuarios({ ...usuarios, contrasena: text })}
-                    value={usuarios.contrasena}
-                />
+  <Text style={styles.label}>Contraseña:</Text>
+  <TextInput
+    style={styles.input}
+    placeholder='Contraseña minima 6 carcateres'
+    value={formData.contrasena}
+    onChangeText={ (value)=>updateField('contrasena', value)}
+    secureTextEntry
+  />
 </View>
- 
-            <TouchableOpacity style={styles.button} onPress={agregarUsuario}>
-<Text style={styles.buttonText}>Guardar</Text>
-</TouchableOpacity>
- 
-            <TouchableOpacity style={styles.button} onPress={goToHome}>
-<Text style={styles.buttonText}>Volver a home</Text>
+
+<TouchableOpacity style={styles.button} onPress={handleRegister}>
+<Text style={styles.buttonText}>Crear usuario</Text>
 </TouchableOpacity>
 </View>
     );

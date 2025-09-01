@@ -1,7 +1,7 @@
 import React,{createContext, useState, useCallback, useEffect} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ToastAndroid } from "react-native";
-import auth from "@react-native-firebase/auth";
+import auth from 'firebase/auth';
 
 const AuthContext = createContext(null);
 
@@ -29,7 +29,7 @@ export const AuthProvider = ({children}) => {
         setAuthToken(null);
       };
 
-      const logout = useCallback(async () => {
+     /* const logout = useCallback(async () => {
         try {
           await fetch(`${API_URL}/logout`, {
             method: "POST",
@@ -41,10 +41,10 @@ export const AuthProvider = ({children}) => {
           await clearSession();
           ToastAndroid.show("Sesión cerrada correctamente", ToastAndroid.SHORT);
         }
-      }, [API_URL]);
+      }, [API_URL]);*/
 
 
-      const login = async (email, password) => {
+      /*const login = async (email, password) => {
         try {
           const response = await fetch(`${API_URL}/login`, {
             method: "POST",
@@ -71,10 +71,10 @@ export const AuthProvider = ({children}) => {
           ToastAndroid.show("Error de conexión con el servidor", ToastAndroid.SHORT);
           return false;
         }
-    };
+    };*/
 
 
-    const register = async ({email, password, displayName}) => {
+   /* const register = async ({email, password, displayName}) => {
         try {
             const userCredential = await auth().createUserWithEmailAndPassword(email, password);
 
@@ -89,11 +89,11 @@ export const AuthProvider = ({children}) => {
           ToastAndroid.show("Error de conexión al registrar.", ToastAndroid.SHORT);
           return false;
         }
-      };
+      };*/
 
 
       return(
-        <AuthContext.Provider value={{user, authToken, loading, login, register, logout, API:API_URL}}>
+        <AuthContext.Provider value={{user, authToken, loading,}}>
             {children}
         </AuthContext.Provider>
       )
