@@ -1,119 +1,161 @@
 // Importación de bibliotecas y componentes necesarios
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
-import { database } from '../config/firebase'; // Importa la configuración de la base de datos de Firebase
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'; // Importa funciones de Firestore para consultas en tiempo real
-import CardUser from '../components/CardUser'; // Importa el componente de tarjeta de producto
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { auth, database } from '../config/firebase';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import CardUser from '../components/CardUser';
 
 // Definición del componente principal Home
-const Home = ({ navigation }) => {
-    // Definición del estado local para almacenar los usuarios
-    const [usuarios, setUsuarios] = useState([]);
+const Home = () => {
+  const [usuario, setUsuario] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    correo: '',
+    edad: '',
+    especialidad: '',
+  });
 
-    // useEffect se ejecuta cuando el componente se monta
-    useEffect(() => {
-        // Define una consulta a la colección 'usuarios' en Firestore, ordenada por el campo 'creado' en orden descendente
-        const q = query(collection(database, 'usuarios'));
-        
-        // Escucha cambios en la consulta de Firestore en tiempo real
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const docs = [];
-            querySnapshot.forEach((doc) => {
-                // Empuja cada documento con su ID a la lista de docs
-                docs.push({ id: doc.id, ...doc.data() });
-            });
-            // Actualiza el estado de usuarios con los datos recibidos
-            setUsuarios(docs);
-        });
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const userRef = doc(database, 'usuarios', currentUser.uid);
 
-        // Limpieza de la suscripción al desmontar el componente
-        return () => unsubscribe();
-    }, []);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() };
+          setUsuario(data);
+          setFormData({
+            nombre: data.nombre || '',
+            correo: data.correo || '',
+            edad: data.edad ? data.edad.toString() : '',
+            especialidad: data.especialidad || '',
+          });
+        } else {
+          console.log("No se encontró información del usuario");
+        }
+      });
 
-    // Función para navegar a la pantalla 'Add'
-    const goToAdd = () => { 
-        navigation.navigate('Add');
+      return () => unsubscribe();
     }
+  }, []);
 
-    // Función que renderiza cada item de la lista
-    const renderItem = ({ item }) => (
-        <CardUser
-            id={item.id}
-            nombre={item.nombre}
-            correo={item.correo}
-            edad={item.edad}
-            especialidad={item.especialidad}
-            contrasena={item.contrasena}
-        />
-    );
+  const handleUpdate = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
 
-    // Renderiza la interfaz del componente Home
+      const userRef = doc(database, 'usuarios', currentUser.uid);
+      await updateDoc(userRef, {
+        nombre: formData.nombre,
+        correo: formData.correo,
+        edad: parseInt(formData.edad),
+        especialidad: formData.especialidad,
+      });
+
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      setEditMode(false);
+    } catch (error) {
+      console.error("Error al actualizar perfil:", error);
+      Alert.alert('Error', 'No se pudo actualizar el perfil');
+    }
+  };
+
+  if (!usuario) {
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Usuarios registrados</Text>
-
-            {/* Muestra la lista de usuarios si hay elementos, de lo contrario muestra un mensaje */}
-            {
-                usuarios.length !== 0 ?
-                <FlatList
-                    data={usuarios}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.list}
-                />
-                : 
-                <Text style={styles.Subtitle}>Cargando usuarios</Text>
-            }
-
-            {/* Botón para navegar a la pantalla de agregar usuarios */}
-            <TouchableOpacity
-                style={styles.Button}
-                onPress={goToAdd}>
-                <Text style={styles.ButtonText}>Agregar usuario</Text>
-            </TouchableOpacity>
-        </View>
+      <View style={styles.container}>
+        <Text style={styles.title}>Cargando Perfil...</Text>
+      </View>
     );
-};
+  }
 
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Perfil</Text>
+
+      {/* Campos editables */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Nombre:</Text>
+        <TextInput
+          style={[styles.input, !editMode && styles.disabledInput]}
+          editable={editMode}
+          value={formData.nombre}
+          onChangeText={(text) => setFormData({ ...formData, nombre: text })}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Correo:</Text>
+        <TextInput
+          style={[styles.input, !editMode && styles.disabledInput]}
+          editable={editMode}
+          value={formData.correo}
+          onChangeText={(text) => setFormData({ ...formData, correo: text })}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Edad:</Text>
+        <TextInput
+          style={[styles.input, !editMode && styles.disabledInput]}
+          editable={editMode}
+          keyboardType="numeric"
+          value={formData.edad}
+          onChangeText={(text) => setFormData({ ...formData, edad: text })}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Especialidad:</Text>
+        <TextInput
+          style={[styles.input, !editMode && styles.disabledInput]}
+          editable={editMode}
+          value={formData.especialidad}
+          onChangeText={(text) => setFormData({ ...formData, especialidad: text })}
+        />
+      </View>
+
+      {/* Botones */}
+      {editMode ? (
+        <TouchableOpacity style={styles.button} onPress={handleUpdate}>
+          <Text style={styles.buttonText}>Guardar cambios</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.button} onPress={() => setEditMode(true)}>
+          <Text style={styles.buttonText}>Editar perfil</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
 // Exporta el componente Home como predeterminado
 export default Home;
 
 // Estilos para el componente Home
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FEFEFE',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    Subtitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 10,
-        color:'#ff9800'
-    },
-    Button: {
-        backgroundColor: '#0288d1',
-        padding: 10,
-        borderRadius: 5,
-        marginTop: 20,
-        marginHorizontal: 50,
-        paddingVertical: 20,
-    },
-    ButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    list: {
-        flexGrow: 1,
-    },
+  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
+  inputContainer: { marginBottom: 15 },
+  label: { fontSize: 16, fontWeight: '600', marginBottom: 5 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    backgroundColor: '#f9f9f9',
+  },
+  disabledInput: {
+    backgroundColor: '#e9ecef',
+    color: '#6c757d',
+  },
+  button: {
+    backgroundColor: '#007bff',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
