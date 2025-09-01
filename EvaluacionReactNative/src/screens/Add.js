@@ -77,14 +77,7 @@ const Add = ({ navigation }) => {
                 />
 </View>
 
-<View style={styles.inputContainer}>
-<Text style={styles.label}>Especialidad:</Text>
-<TextInput
-                    style={styles.input}
-                    onChangeText={text => setUsuarios({ ...usuarios, especialidad: text })}
-                    value={usuarios.especialidad}
-                />
-</View>
+
 
 <View style={styles.inputContainer}>
 <Text style={styles.label}>edad:</Text>
